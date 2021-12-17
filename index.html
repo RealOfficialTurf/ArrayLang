@@ -110,12 +110,12 @@ function parsecode(sourcecode){
 				--pos2;
 				let newsourcecode = sourcecode.slice(pos,pos2);
 				subcode.statementselse = parsecode(newsourcecode).statements;
+				pos = pos2 = pos2+1;
 			}
 			else{
 				subcode.statementselse = {}
 			}
 			code.statements.push(subcode);
-			pos = pos2 = pos2+1;
 		}
 		else{
 			subcode = Object.create(statementassign);
