@@ -1,0 +1,239 @@
+<!doctype html>
+<head>
+	<meta charset="UTF-8"></meta>
+	<title>Test</title>
+</head>
+<body>
+	<textarea id="codetext" rows="24" cols="80"></textarea>
+	<br></br>
+	<button id="run" onclick="run()">Test</button>
+	<button id="clear" onclick="result.value = ''">Clear Output</button>
+	<br></br>
+	<textarea id="result" rows="32" cols="80"></textarea>
+</body>
+<script>
+"use strict"
+const statementassign = {
+	assignvariable: "",
+	assignvalue: ""
+}
+Object.preventExtensions(statementassign);
+const statementif = {
+	condition: "",
+	statements: [],
+	statementselse: []
+}
+Object.preventExtensions(statementif);
+
+function debugstringpos(string,pos){
+	console.log(string+'\n'+' '.repeat(pos)+'^');
+}
+
+function replaceAll(str,mapObj){
+	var re = new RegExp(Object.keys(mapObj).join("|"),"gi");
+	return str.replace(re, function(matched){
+		return mapObj[matched.toLowerCase()];
+	});
+}
+
+function parsecode(sourcecode){
+	let pos = 0;
+	let pos2 = 0;
+	let code = {};
+	code.statements = [];
+	while(pos<sourcecode.length){
+		let subcode;
+		if(sourcecode.startsWith("if",pos)){
+			subcode = Object.create(statementif);
+			console.log("IF",sourcecode.length,pos);
+			//find the condition
+			pos = pos2 = sourcecode.indexOf('(',pos2)+1; //begin
+			pos2 = sourcecode.indexOf(')',pos2); //end
+			subcode.condition = '('+sourcecode.slice(pos,pos2).trim()+')'; //condition
+			//find the start cap and the matching end cap
+			pos = pos2 = sourcecode.indexOf('{',pos2)+1; //begin
+			pos2 = pos; //end
+			if(pos == -1){
+				throw "ERROR: Missing brace"
+			}
+			let i = 1;
+			while(i>0){
+				let j = sourcecode.indexOf('{',pos2);
+				let k = sourcecode.indexOf('}',pos2);
+				if((j!=-1&&j<k)||k==-1){
+					// ... {! { ... }
+					pos2 = j+1;
+					++i;
+				}
+				else if((k!=-1&&j>k)||j==-1){
+					// ... }! } ... {
+					pos2 = k+1;
+					--i;
+				}
+				else{
+					throw "TEST: "+j+' '+k;
+				}
+			}
+			--pos2;
+			let newsourcecode = sourcecode.slice(pos,pos2);
+			subcode.statements = parsecode(newsourcecode).statements; //statements
+			pos = pos2 = pos2+1;
+			console.log("ENDIF",sourcecode.length,pos);
+			//Check whether the block is followed by an else
+			if(sourcecode.startsWith("else",pos)){
+				console.log("ELSE",sourcecode.length,pos);
+				pos = pos2 = sourcecode.indexOf('{',pos2)+1; //begin
+				pos2 = pos; //end
+				if(pos == -1){
+					throw "ERROR: Missing brace"
+				}
+				debugstringpos(sourcecode,pos);
+				debugstringpos(sourcecode,pos2);
+				let i = 1;
+				while(i>0){
+					let j = sourcecode.indexOf('{',pos2);
+					let k = sourcecode.indexOf('}',pos2);
+					if((j!=-1&&j<k)||k==-1){
+						// ... {! { ... }
+						pos2 = j+1;
+						++i;
+					}
+					else if((k!=-1&&j>k)||j==-1){
+						// ... }! } ... {
+						pos2 = k+1;
+						--i;
+					}
+					else{
+						throw "TEST: "+j+' '+k;
+					}
+				}
+				--pos2;
+				let newsourcecode = sourcecode.slice(pos,pos2);
+				subcode.statementselse = parsecode(newsourcecode).statements;
+			}
+			else{
+				subcode.statementselse = {}
+			}
+			code.statements.push(subcode);
+			pos = pos2 = pos2+1;
+		}
+		else{
+			subcode = Object.create(statementassign);
+			console.log("...",sourcecode.length,pos);
+			let pos1 = sourcecode.indexOf('=',pos2); //mid
+			pos2 = sourcecode.indexOf(';',pos2); //end
+			if(pos1 == -1){
+				throw "ERROR: No equal sign!";
+			}
+			subcode.assignvariable = sourcecode.slice(pos,pos1).trim();
+			subcode.assignvalue = '('+sourcecode.slice(pos1+1,pos2).trim()+')';
+			code.statements.push(subcode);
+			pos = pos2 = pos2+1;
+		}
+	}
+	return code;
+}
+
+function simplifystatements(statements){
+	let statementlist = Object.create(null); //A Map would make more sense here, but it's much simpler to use Object.keys() to get an array of keys rather than Map.keys() that only return the iterator....
+	for(let i = 0;i<statements.length;++i){
+		if(statements[i].condition){
+			console.log("IF found",statements[i]);
+			let templist1 = simplifystatements(statements[i].statements);
+			let templist2 = simplifystatements(statements[i].statementselse);
+			let tempstatementlist = Object.create(null);
+			let j;
+			for(j of Object.keys(templist1)){
+				tempstatementlist[j]='';
+			}
+			for(j of Object.keys(templist2)){
+				tempstatementlist[j]='';
+			}
+			for(j of Object.keys(tempstatementlist)){
+				tempstatementlist[j]='('+statements[i].condition+' ? '+(templist1[j]===undefined?j:templist1[j])+' : '+(templist2[j]===undefined?j:templist2[j])+')';
+			}
+			//simplify the if into normal statements!
+			console.log("IF result",tempstatementlist)
+			let assignvariable = statements[i].assignvariable;
+			let assignvalue = statements[i].assignvalue;
+			//simplify every statements
+			
+			//check for expandable variables
+			if(Object.keys(statementlist).length>0){
+				for(j of Object.keys(tempstatementlist)){
+					let assignvariable = j;
+					let assignvalue = tempstatementlist[j];
+					assignvalue = assignvalue.replace(new RegExp(Object.keys(statementlist).map(key=>key.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&')).join("|"),"gi"),(m)=>statementlist[m]); //A replace-once one-liner! Woo!
+					tempstatementlist[j]=assignvalue;
+				}
+			}
+			//check for reassignments
+			for(j of Object.keys(tempstatementlist)){
+				statementlist[j]=tempstatementlist[j]; //Setting a value to the same key will overwrite the value, and previous variables has been expanded, so reassignments are done automatically.
+			}
+			console.log("Var list after if:",statementlist);
+		}
+		else{
+			let assignvariable = statements[i].assignvariable;
+			let assignvalue = statements[i].assignvalue;
+			//simplify the statements
+			//check for expandable variables
+			if(Object.keys(statementlist).length>0){
+				assignvalue = assignvalue.replace(new RegExp(Object.keys(statementlist).map(key=>key.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&')).join("|"),"gi"),(m)=>statementlist[m]); //A replace-once one-liner! Woo!
+			}
+			//check for reassignments
+			statementlist[assignvariable]=assignvalue; //Setting a value to the same key will overwrite the value, and previous variables has been expanded, so reassignments are done automatically.
+			console.log("Var list after statement:",statementlist);
+		}
+	}
+	return statementlist; //Returns an object {assignvariable1: assignvalue1, assignvariable2: assignvalue2, ...}
+}
+
+function simplifyinstructions(instructions){
+	return simplifystatements(instructions.statements);
+}
+
+function run(){
+	//Replace all the \n into spaces and removes beginning and trailing whitespace between ;
+	//Kinda like trim(), but whatever.
+	var sourcecode = codetext.value;
+	sourcecode = sourcecode.replaceAll(/\/\/.*/ig,''); //Removes comments
+	sourcecode = sourcecode.replaceAll(/\n+|\t+/ig,' '); //Replaces newline and tabs to space
+	sourcecode = sourcecode.replaceAll(/(\s+\;)|(\;\s+)/ig,';');	
+	sourcecode = sourcecode.replaceAll(/(\s+\{)|(\{\s+)/ig,'{'); //Replaces all whitespace infront or behind braces to brace
+	sourcecode = sourcecode.replaceAll(/(\s+\})|(\}\s+)/ig,'}');
+	//Get the first statement!
+	let statement = sourcecode.slice(0,sourcecode.indexOf(';',0));
+	if(!statement.startsWith("var")){
+		throw "ERROR: Code must start with a var";
+		return;
+	}
+	//We don't need the first statement anymore.
+	sourcecode = sourcecode.slice(sourcecode.indexOf(';',0)+1);
+	console.log(sourcecode); //For debugging purposes
+	//Execute the first statement, which will be the "var" statement
+	statement = statement.slice(4);
+	let openbrckt = statement.indexOf('[');
+	let closebrckt = statement.indexOf(']');
+	let varname = statement.slice(0,openbrckt);
+	let varelements = parseInt(statement.slice(openbrckt+1,closebrckt));
+	if(isNaN(varelements)||varelements<=0||varelements>Number.MAX_SAFE_INTEGER){
+		throw "ERROR: element count is invalid";
+		return;
+	}
+	//Generate the variable names
+	var variables = [];
+	for(let i = 0;i<varelements;i++){
+		variables.push([varname,'[',i,']'].join(''));
+	}
+	console.log('{'+variables.join(', ')+']');; //For debugging purposes
+	//Execute order si- I mean, execute the statements!
+	var instructions = parsecode(sourcecode);
+	console.log("before simplification",instructions);
+	let statements = simplifyinstructions(instructions);
+	console.log("after simplification",statements);
+	var output = '['+variables.join(', ')+']';
+	output = output.replace(new RegExp(Object.keys(statements).map(key=>key.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&')).join("|"),"gi"),(m)=>statements[m])
+	result.value = output;
+}
+</script>
