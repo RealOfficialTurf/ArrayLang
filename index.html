@@ -202,6 +202,8 @@ function run(){
 	sourcecode = sourcecode.replaceAll(/(\s+\;)|(\;\s+)/ig,';');	
 	sourcecode = sourcecode.replaceAll(/(\s+\{)|(\{\s+)/ig,'{'); //Replaces all whitespace infront or behind braces to brace
 	sourcecode = sourcecode.replaceAll(/(\s+\})|(\}\s+)/ig,'}');
+	sourcecode = sourcecode.trim();
+	console.log(sourcecode); //For debugging purposes
 	//Get the first statement!
 	let statement = sourcecode.slice(0,sourcecode.indexOf(';',0));
 	if(!statement.startsWith("var")){
@@ -210,7 +212,6 @@ function run(){
 	}
 	//We don't need the first statement anymore.
 	sourcecode = sourcecode.slice(sourcecode.indexOf(';',0)+1);
-	console.log(sourcecode); //For debugging purposes
 	//Execute the first statement, which will be the "var" statement
 	statement = statement.slice(4);
 	let openbrckt = statement.indexOf('[');
@@ -233,7 +234,9 @@ function run(){
 	let statements = simplifyinstructions(instructions);
 	console.log("after simplification",statements);
 	var output = '['+variables.join(', ')+']';
-	output = output.replace(new RegExp(Object.keys(statements).map(key=>key.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&')).join("|"),"gi"),(m)=>statements[m])
+	if(Object.keys(statements).length>0){
+		output = output.replace(new RegExp(Object.keys(statements).map(key=>key.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&')).join("|"),"gi"),(m)=>statements[m])
+	}
 	result.value = output;
 }
 </script>
