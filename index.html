@@ -1,15 +1,15 @@
 <!doctype html>
 <head>
 	<meta charset="UTF-8"></meta>
-	<title>Test</title>
+	<title>ArrayLang</title>
 </head>
 <body>
-	<textarea id="codetext" rows="24" cols="80"></textarea>
-	<br></br>
-	<button id="run" onclick="run()">Test</button>
-	<button id="clear" onclick="result.value = ''">Clear Output</button>
-	<br></br>
-	<textarea id="result" rows="32" cols="80"></textarea>
+	<label for="codetext">Paste the code here:</label><br></br>
+	<textarea id="codetext" rows="24" cols="80" spellcheck=false autofocus></textarea><br></br>
+	<button id="run" onclick="run()">Convert</button>
+	<button id="clear" onclick="result.value = ''">Clear Output</button><br></br>
+	<label for="result">Array output:</label><br></br>
+	<textarea id="result" rows="32" cols="80" spellcheck=false readonly></textarea>
 </body>
 <script>
 "use strict"
@@ -26,7 +26,7 @@ const statementif = {
 Object.preventExtensions(statementif);
 
 function debugstringpos(string,pos){
-	console.log(string+'\n'+' '.repeat(pos)+'^');
+	return string+'\n'+' '.repeat(pos)+'^';
 }
 
 function replaceAll(str,mapObj){
@@ -51,11 +51,11 @@ function parsecode(sourcecode){
 			pos2 = sourcecode.indexOf(')',pos2); //end
 			subcode.condition = '('+sourcecode.slice(pos,pos2).trim()+')'; //condition
 			//find the start cap and the matching end cap
-			pos = pos2 = sourcecode.indexOf('{',pos2)+1; //begin
-			pos2 = pos; //end
+			pos = sourcecode.indexOf('{',pos2)+1; //begin
 			if(pos == -1){
-				throw "ERROR: Missing brace"
+				throw "ERROR: Missing open curly bracket.\n"+debugstringpos(sourcecode,pos2);
 			}
+			pos2 = pos; //end
 			let i = 1;
 			while(i>0){
 				let j = sourcecode.indexOf('{',pos2);
@@ -82,13 +82,11 @@ function parsecode(sourcecode){
 			//Check whether the block is followed by an else
 			if(sourcecode.startsWith("else",pos)){
 				console.log("ELSE",sourcecode.length,pos);
-				pos = pos2 = sourcecode.indexOf('{',pos2)+1; //begin
-				pos2 = pos; //end
+				pos = sourcecode.indexOf('{',pos2)+1; //begin
 				if(pos == -1){
-					throw "ERROR: Missing brace"
+					throw "ERROR: Missing open curly bracket.\n"+debugstringpos(sourcecode,pos2);
 				}
-				debugstringpos(sourcecode,pos);
-				debugstringpos(sourcecode,pos2);
+				pos2 = pos; //end
 				let i = 1;
 				while(i>0){
 					let j = sourcecode.indexOf('{',pos2);
@@ -122,8 +120,8 @@ function parsecode(sourcecode){
 			console.log("...",sourcecode.length,pos);
 			let pos1 = sourcecode.indexOf('=',pos2); //mid
 			pos2 = sourcecode.indexOf(';',pos2); //end
-			if(pos1 == -1){
-				throw "ERROR: No equal sign!";
+			if(pos1==-1||pos1>pos2){
+				throw "ERROR: Missing equal sign.\n"+debugstringpos(sourcecode,pos)+'\n'+debugstringpos(sourcecode,pos2);
 			}
 			subcode.assignvariable = sourcecode.slice(pos,pos1).trim();
 			subcode.assignvalue = '('+sourcecode.slice(pos1+1,pos2).trim()+')';
@@ -138,7 +136,6 @@ function simplifystatements(statements){
 	let statementlist = Object.create(null); //A Map would make more sense here, but it's much simpler to use Object.keys() to get an array of keys rather than Map.keys() that only return the iterator....
 	for(let i = 0;i<statements.length;++i){
 		if(statements[i].condition){
-			console.log("IF found",statements[i]);
 			let templist1 = simplifystatements(statements[i].statements);
 			let templist2 = simplifystatements(statements[i].statementselse);
 			let tempstatementlist = Object.create(null);
@@ -153,7 +150,6 @@ function simplifystatements(statements){
 				tempstatementlist[j]='('+statements[i].condition+' ? '+(templist1[j]===undefined?j:templist1[j])+' : '+(templist2[j]===undefined?j:templist2[j])+')';
 			}
 			//simplify the if into normal statements!
-			console.log("IF result",tempstatementlist)
 			let assignvariable = statements[i].assignvariable;
 			let assignvalue = statements[i].assignvalue;
 			//simplify every statements
@@ -183,7 +179,6 @@ function simplifystatements(statements){
 			}
 			//check for reassignments
 			statementlist[assignvariable]=assignvalue; //Setting a value to the same key will overwrite the value, and previous variables has been expanded, so reassignments are done automatically.
-			console.log("Var list after statement:",statementlist);
 		}
 	}
 	return statementlist; //Returns an object {assignvariable1: assignvalue1, assignvariable2: assignvalue2, ...}
