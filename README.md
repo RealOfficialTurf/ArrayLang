@@ -5,7 +5,7 @@ A parser to simplify array experssions in Automate, written in JavaScript.
 
 ## How to use
 
-Download the html page and open the html page.
+Download both the html page and the js file, then open the html page.
 
 Write some code in the top textbox.
 
@@ -51,5 +51,4 @@ That would've be great.
 
 ## Plans for the future
 
-- `switch-case` statement
-- Possibility of branchless programming through `(condition1)*(value1)+(condition2)*(value2)+...+(conditionn)*(valuen)` via `switch-case` statement.
+- implementation of `switch-case` statement using dictionary such as `{3:"Pi to the nearest integer", 21:"Sum of 9 and 10", 8128:"Perfect number"}[x]` (any other values will return `null`, though).
